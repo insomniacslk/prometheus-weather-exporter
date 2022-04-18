@@ -1,4 +1,4 @@
-module github.com/insomniacslk/prometheus-speedtest-exporter
+module github.com/insomniacslk/prometheus-weather-exporter
 
 go 1.16
 
