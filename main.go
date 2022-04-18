@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	forecast "github.com/mlbright/forecast/v2"
@@ -98,6 +99,25 @@ func getWeather(mapsAPIKey, darkskyAPIKey, locName string) (*forecast.Forecast, 
 	return fc, nil
 }
 
+// getValueByFieldName returns a float64 value based on the supported
+// fields in the forecast datapoint.
+func getValueByFieldName(field string, dp *forecast.DataPoint) (float64, error) {
+	switch field {
+	case "temperature":
+		return dp.Temperature, nil
+	case "apparent_temperature":
+		return dp.ApparentTemperature, nil
+	case "wind_speed":
+		return dp.WindSpeed, nil
+	case "cloud_cover":
+		return dp.CloudCover, nil
+	case "humidity":
+		return dp.Humidity, nil
+	default:
+		return 0, fmt.Errorf("unsupported field '%s'", field)
+	}
+}
+
 func main() {
 	flag.Parse()
 	config, err := LoadConfig(*flagConfigFile)
@@ -106,25 +126,18 @@ func main() {
 	}
 	fmt.Printf("Locations: %s\n", config.Locations)
 
-	weatherTemperatureGauge := prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Name: "weather_temperature",
-			Help: "Weather forecast - temperature",
-		},
-		[]string{"location", "latitude", "longitude"},
-	)
-	weatherApparentTemperatureGauge := prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Name: "weather_apparent_temperature",
-			Help: "Weather forecast - apparent temperature",
-		},
-		[]string{"location", "latitude", "longitude"},
-	)
-	if err := prometheus.Register(weatherTemperatureGauge); err != nil {
-		log.Fatalf("Failed to register weather temperature gauge gauge: %v", err)
-	}
-	if err := prometheus.Register(weatherApparentTemperatureGauge); err != nil {
-		log.Fatalf("Failed to register weather temperature gauge gauge: %v", err)
+	gauges := map[string]*prometheus.GaugeVec{}
+	for _, key := range []string{"temperature", "apparent_temperature", "wind_speed", "cloud_cover", "humidity"} {
+		gauges[key] = prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: fmt.Sprintf("weather_%s", key),
+				Help: fmt.Sprintf("Weather forecast - %s", strings.Replace(key, "_", " ", -1)),
+			},
+			[]string{"location", "latitude", "longitude"},
+		)
+		if err := prometheus.Register(gauges[key]); err != nil {
+			log.Fatalf("Failed to register weather %s gauge: %v", key, err)
+		}
 	}
 
 	go func() {
@@ -137,8 +150,14 @@ func main() {
 					log.Printf("Failed to get weather for '%s': %v", loc, err)
 				} else {
 					// update values
-					weatherTemperatureGauge.WithLabelValues(loc, fmt.Sprintf("%f", fc.Latitude), fmt.Sprintf("%f", fc.Longitude)).Set(fc.Currently.Temperature)
-					weatherApparentTemperatureGauge.WithLabelValues(loc, fmt.Sprintf("%f", fc.Latitude), fmt.Sprintf("%f", fc.Longitude)).Set(fc.Currently.ApparentTemperature)
+					for key, gauge := range gauges {
+						val, err := getValueByFieldName(key, &fc.Currently)
+						if err != nil {
+							log.Printf("Warning: skipping '%s': %v", key, err)
+							continue
+						}
+						gauge.WithLabelValues(loc, fmt.Sprintf("%f", fc.Latitude), fmt.Sprintf("%f", fc.Longitude)).Set(val)
+					}
 				}
 			}
 			log.Printf("Sleeping %s...", *flagSleepInterval)
