@@ -33,3 +33,8 @@ More specifically:
 go build
 ./prometheus-weather-exporter -c /path/to/your-config.json
 ```
+
+## Grafana
+
+See dashboard at
+[dashboard.json](https://github.com/insomniacslk/prometheus-weather-exporter/blob/main/dashboard.json)
