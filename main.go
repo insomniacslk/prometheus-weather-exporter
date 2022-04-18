@@ -27,6 +27,7 @@ var (
 // Config is the configuration file type.
 type Config struct {
 	Locations        []string `json:"locations"`
+	Metrics          []string `json:"metrics"`
 	GoogleMapsAPIKey string   `json:"google_maps_api_key"`
 	DarkskyAPIKey    string   `json:"darksky_api_key"`
 }
@@ -124,10 +125,18 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to load configuration file '%s': %v", *flagConfigFile, err)
 	}
-	fmt.Printf("Locations: %s\n", config.Locations)
+	fmt.Printf("Locations (%d): %s\n", len(config.Locations), config.Locations)
+	fmt.Printf("Metrics (%d): %s", len(config.Metrics), config.Metrics)
+
+	if len(config.Locations) == 0 {
+		log.Fatalf("Must specify at least one location")
+	}
+	if len(config.Metrics) == 0 {
+		log.Fatalf("Must specify at least one metric")
+	}
 
 	gauges := map[string]*prometheus.GaugeVec{}
-	for _, key := range []string{"temperature", "apparent_temperature", "wind_speed", "cloud_cover", "humidity"} {
+	for _, key := range config.Metrics {
 		gauges[key] = prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Name: fmt.Sprintf("weather_%s", key),
