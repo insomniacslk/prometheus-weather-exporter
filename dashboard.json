@@ -27,6 +27,7 @@
   "liveNow": false,
   "panels": [
     {
+      "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -34,7 +35,8 @@
         "y": 0
       },
       "id": 16,
-      "title": "Row title",
+      "panels": [],
+      "title": "Temperature",
       "type": "row"
     },
     {
@@ -220,7 +222,7 @@
       },
       "id": 14,
       "panels": [],
-      "title": "Row title",
+      "title": "Everything else",
       "type": "row"
     },
     {
@@ -385,7 +387,7 @@
             "uid": "WGSsiTWRk"
           },
           "exemplar": true,
-          "expr": "weather_cloud_cover",
+          "expr": "weather_cloud_cover * 100",
           "interval": "",
           "legendFormat": "{{location}}",
           "refId": "A"
@@ -494,6 +496,6 @@
   "timezone": "",
   "title": "Weather",
   "uid": "K-drRzkRz",
-  "version": 11,
+  "version": 13,
   "weekStart": ""
 }
