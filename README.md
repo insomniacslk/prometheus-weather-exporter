@@ -7,6 +7,11 @@ weather forecast.
 Note that Darksky is not accepting any more API sign-ups, so this will work only
 if you have an existing Darksky account.
 
+## Metrics
+
+The exported metrics are named like `weather_<metric>`, where `<metric>` is what
+you define in the configuration file as explained below.
+
 ## Configuration file
 
 Create a configuration file similar to the following:
