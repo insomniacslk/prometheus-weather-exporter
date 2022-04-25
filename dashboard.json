@@ -23,6 +23,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": 15,
+  "iteration": 1650868129283,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -115,7 +116,7 @@
             "uid": "WGSsiTWRk"
           },
           "exemplar": true,
-          "expr": "weather_temperature",
+          "expr": "weather_temperature{location=~\"$location\"}",
           "format": "time_series",
           "instant": false,
           "interval": "",
@@ -127,6 +128,69 @@
       "type": "timeseries"
     },
     {
+      "alert": {
+        "alertRuleTags": {},
+        "conditions": [
+          {
+            "evaluator": {
+              "params": [
+                0
+              ],
+              "type": "gt"
+            },
+            "operator": {
+              "type": "and"
+            },
+            "query": {
+              "params": [
+                "A",
+                "24h",
+                "now"
+              ]
+            },
+            "reducer": {
+              "params": [],
+              "type": "avg"
+            },
+            "type": "query"
+          },
+          {
+            "evaluator": {
+              "params": [
+                6,
+                8
+              ],
+              "type": "within_range"
+            },
+            "operator": {
+              "type": "and"
+            },
+            "query": {
+              "params": [
+                "B",
+                "24h",
+                "now"
+              ]
+            },
+            "reducer": {
+              "params": [],
+              "type": "last"
+            },
+            "type": "query"
+          }
+        ],
+        "executionErrorState": "alerting",
+        "for": "5m",
+        "frequency": "1m",
+        "handler": 1,
+        "name": "Apparent temperature (°C) alert",
+        "noDataState": "no_data",
+        "notifications": [
+          {
+            "uid": "Wvu0JWzgk"
+          }
+        ]
+      },
       "description": "",
       "fieldConfig": {
         "defaults": {
@@ -203,10 +267,30 @@
             "uid": "WGSsiTWRk"
           },
           "exemplar": true,
-          "expr": "weather_apparent_temperature",
+          "expr": "weather_apparent_temperature{location=~\"$location\"}",
           "interval": "",
           "legendFormat": "{{location}}",
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "WGSsiTWRk"
+          },
+          "exemplar": true,
+          "expr": "SELECT CURRENT_DATE - INTERVAL '1 day' AS \"time\", date_part('hour', CURRENT_TIMESTAMP) AS \"hour\"",
+          "hide": true,
+          "interval": "",
+          "legendFormat": "",
+          "refId": "B"
+        }
+      ],
+      "thresholds": [
+        {
+          "colorMode": "critical",
+          "op": "gt",
+          "value": 0,
+          "visible": true
         }
       ],
       "title": "Apparent temperature (°C)",
@@ -301,7 +385,7 @@
             "uid": "WGSsiTWRk"
           },
           "exemplar": true,
-          "expr": "weather_wind_speed",
+          "expr": "weather_wind_speed{location=~\"$location\"}",
           "interval": "",
           "legendFormat": "{{location}}",
           "refId": "A"
@@ -387,7 +471,7 @@
             "uid": "WGSsiTWRk"
           },
           "exemplar": true,
-          "expr": "weather_cloud_cover * 100",
+          "expr": "weather_cloud_cover{location=~\"$location\"} * 100",
           "interval": "",
           "legendFormat": "{{location}}",
           "refId": "A"
@@ -472,7 +556,7 @@
             "uid": "WGSsiTWRk"
           },
           "exemplar": true,
-          "expr": "weather_humidity",
+          "expr": "weather_humidity{location=~\"$location\"} * 100",
           "interval": "",
           "legendFormat": "{{location}}",
           "refId": "A"
@@ -480,13 +564,126 @@
       ],
       "title": "Humidity (%)",
       "type": "timeseries"
+    },
+    {
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 19
+      },
+      "id": 18,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "WGSsiTWRk"
+          },
+          "exemplar": true,
+          "expr": "weather_precip_intensity{location=~\"$location\"}",
+          "interval": "",
+          "legendFormat": "{{location}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Precipitation intensity (mm)",
+      "type": "timeseries"
     }
   ],
+  "refresh": "",
   "schemaVersion": 35,
   "style": "dark",
   "tags": [],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "definition": "label_values({__name__=~\"weather.*\"}, location)",
+        "hide": 0,
+        "includeAll": true,
+        "multi": true,
+        "name": "location",
+        "options": [],
+        "query": {
+          "query": "label_values({__name__=~\"weather.*\"}, location)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
   },
   "time": {
     "from": "now-6h",
@@ -496,6 +693,6 @@
   "timezone": "",
   "title": "Weather",
   "uid": "K-drRzkRz",
-  "version": 13,
+  "version": 21,
   "weekStart": ""
 }

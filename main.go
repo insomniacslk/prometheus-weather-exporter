@@ -114,6 +114,8 @@ func getValueByFieldName(field string, dp *forecast.DataPoint) (float64, error) 
 		return dp.CloudCover, nil
 	case "humidity":
 		return dp.Humidity, nil
+	case "precip_intensity":
+		return dp.PrecipIntensity, nil
 	default:
 		return 0, fmt.Errorf("unsupported field '%s'", field)
 	}
