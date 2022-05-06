@@ -26,7 +26,7 @@ Create a configuration file similar to the following:
 ```
 
 More specifically:
-* `metrics`: the metrics that will be exported to Prometheus. See [`getValueByFieldName`](https://github.com/insomniacslk/prometheus-weather-exporter/blob/main/main.go#L104) for supported metrics. Feel free to add more metrics from [`forecast.DataPoint`](https://github.com/mlbright/darksky/blob/master/v2/forecast.go#L28).
+* `metrics`: the metrics that will be exported to Prometheus. See [`getValueByFieldName`](https://github.com/insomniacslk/prometheus-weather-exporter/blob/main/main.go#L104) for supported metrics. Feel free to add more metrics from [`forecast.DataPoint`](https://github.com/insomniacslk/darksky/blob/master/v2/forecast.go#L28).
 * `locations`: the locations you want metrics exported for. Anything that the
   Google Maps Geocoding API will understand.
 * `google_maps_api_key`: self-explaining

@@ -9,19 +9,17 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"time"
 
-	forecast "github.com/mlbright/forecast/v2"
+	forecast "github.com/insomniacslk/darksky/v2"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"googlemaps.github.io/maps"
 )
 
 var (
-	flagPath          = flag.String("p", "/metrics", "HTTP path where to expose metrics to")
-	flagListen        = flag.String("l", ":9102", "Address to listen to")
-	flagSleepInterval = flag.Duration("i", time.Hour, "Interval between weather checks")
-	flagConfigFile    = flag.String("c", "config.json", "Configuration file")
+	flagPath       = flag.String("p", "/metrics", "HTTP path where to expose metrics to")
+	flagListen     = flag.String("l", ":9102", "Address to listen to")
+	flagConfigFile = flag.String("c", "config.json", "Configuration file")
 )
 
 // Config is the configuration file type.
@@ -94,6 +92,7 @@ func getWeather(mapsAPIKey, darkskyAPIKey, locName string) (*forecast.Forecast, 
 	if err != nil {
 		return nil, fmt.Errorf("forecast request failed: %w", err)
 	}
+	log.Printf("Forecast: %+v", fc)
 	if fc.Flags.Units != string(forecast.SI) {
 		return nil, fmt.Errorf("units are not SI: got %v", fc.Flags.Units)
 	}
@@ -121,6 +120,70 @@ func getValueByFieldName(field string, dp *forecast.DataPoint) (float64, error) 
 	}
 }
 
+// NewWeatherCollector returns a new WeatherCollector object.
+func NewWeatherCollector(ctx context.Context, locations []string, descs map[string]*prometheus.Desc, gmapsAPIKey, darkskyAPIKey string) *WeatherCollector {
+	return &WeatherCollector{
+		ctx:           ctx,
+		descs:         descs,
+		locations:     locations,
+		gmapsAPIKey:   gmapsAPIKey,
+		darkskyAPIKey: darkskyAPIKey,
+	}
+}
+
+// WeatherCollector is a prometheus collector for weather metrics.
+type WeatherCollector struct {
+	ctx                        context.Context
+	descs                      map[string]*prometheus.Desc
+	locations                  []string
+	gmapsAPIKey, darkskyAPIKey string
+}
+
+// Describe implements prometheus.Collector.Describe for WeatherCollector.
+func (wc *WeatherCollector) Describe(ch chan<- *prometheus.Desc) {
+	prometheus.DescribeByCollect(wc, ch)
+}
+
+func getDescs(metrics []string) map[string]*prometheus.Desc {
+	var descs = make(map[string]*prometheus.Desc)
+	for _, key := range metrics {
+		descs[key] = prometheus.NewDesc(
+			fmt.Sprintf("weather_%s", key),
+			fmt.Sprintf("Weather forecast - %s", strings.Replace(key, "_", " ", -1)),
+			[]string{"location", "latitude", "longitude"},
+			nil,
+		)
+	}
+	return descs
+}
+
+// Collect implements prometheus.Collector.Collect for WeatherCollector.
+func (wc *WeatherCollector) Collect(ch chan<- prometheus.Metric) {
+	// TODO cache metrics to avoid calling the API method at every scrape
+	for _, loc := range wc.locations {
+		fmt.Printf("Getting weather for %s\n", loc)
+		fc, err := getWeather(wc.gmapsAPIKey, wc.darkskyAPIKey, loc)
+		if err != nil {
+			log.Printf("Failed to get weather for '%s': %v", loc, err)
+		} else {
+			// update values
+			for key, desc := range wc.descs {
+				val, err := getValueByFieldName(key, &fc.Currently)
+				if err != nil {
+					log.Printf("Warning: skipping '%s': %v", key, err)
+					continue
+				}
+				ch <- prometheus.MustNewConstMetric(
+					desc,
+					prometheus.GaugeValue,
+					val,
+					loc, fmt.Sprintf("%f", fc.Latitude), fmt.Sprintf("%f", fc.Longitude),
+				)
+			}
+		}
+	}
+}
+
 func main() {
 	flag.Parse()
 	config, err := LoadConfig(*flagConfigFile)
@@ -137,44 +200,10 @@ func main() {
 		log.Fatalf("Must specify at least one metric")
 	}
 
-	gauges := map[string]*prometheus.GaugeVec{}
-	for _, key := range config.Metrics {
-		gauges[key] = prometheus.NewGaugeVec(
-			prometheus.GaugeOpts{
-				Name: fmt.Sprintf("weather_%s", key),
-				Help: fmt.Sprintf("Weather forecast - %s", strings.Replace(key, "_", " ", -1)),
-			},
-			[]string{"location", "latitude", "longitude"},
-		)
-		if err := prometheus.Register(gauges[key]); err != nil {
-			log.Fatalf("Failed to register weather %s gauge: %v", key, err)
-		}
+	wc := NewWeatherCollector(context.Background(), config.Locations, getDescs(config.Metrics), config.GoogleMapsAPIKey, config.DarkskyAPIKey)
+	if err := prometheus.Register(wc); err != nil {
+		log.Fatalf("Failed to register weather collector: %v", err)
 	}
-
-	go func() {
-		for {
-			log.Printf("Fetching weather...")
-			for _, loc := range config.Locations {
-				fmt.Printf("Getting weather for %s\n", loc)
-				fc, err := getWeather(config.GoogleMapsAPIKey, config.DarkskyAPIKey, loc)
-				if err != nil {
-					log.Printf("Failed to get weather for '%s': %v", loc, err)
-				} else {
-					// update values
-					for key, gauge := range gauges {
-						val, err := getValueByFieldName(key, &fc.Currently)
-						if err != nil {
-							log.Printf("Warning: skipping '%s': %v", key, err)
-							continue
-						}
-						gauge.WithLabelValues(loc, fmt.Sprintf("%f", fc.Latitude), fmt.Sprintf("%f", fc.Longitude)).Set(val)
-					}
-				}
-			}
-			log.Printf("Sleeping %s...", *flagSleepInterval)
-			time.Sleep(*flagSleepInterval)
-		}
-	}()
 
 	http.Handle(*flagPath, promhttp.Handler())
 	log.Printf("Starting server on %s", *flagListen)
