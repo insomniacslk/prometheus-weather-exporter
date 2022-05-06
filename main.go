@@ -92,7 +92,6 @@ func getWeather(mapsAPIKey, darkskyAPIKey, locName string) (*forecast.Forecast, 
 	if err != nil {
 		return nil, fmt.Errorf("forecast request failed: %w", err)
 	}
-	log.Printf("Forecast: %+v", fc)
 	if fc.Flags.Units != string(forecast.SI) {
 		return nil, fmt.Errorf("units are not SI: got %v", fc.Flags.Units)
 	}
