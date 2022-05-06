@@ -160,7 +160,7 @@ func getDescs(metrics []string) map[string]*prometheus.Desc {
 func (wc *WeatherCollector) Collect(ch chan<- prometheus.Metric) {
 	// TODO cache metrics to avoid calling the API method at every scrape
 	for _, loc := range wc.locations {
-		fmt.Printf("Getting weather for %s\n", loc)
+		log.Printf("Getting weather for %s", loc)
 		fc, err := getWeather(wc.gmapsAPIKey, wc.darkskyAPIKey, loc)
 		if err != nil {
 			log.Printf("Failed to get weather for '%s': %v", loc, err)
@@ -189,8 +189,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to load configuration file '%s': %v", *flagConfigFile, err)
 	}
-	fmt.Printf("Locations (%d): %s\n", len(config.Locations), config.Locations)
-	fmt.Printf("Metrics (%d): %s", len(config.Metrics), config.Metrics)
+	log.Printf("Locations (%d): %s", len(config.Locations), config.Locations)
+	log.Printf("Metrics (%d): %s", len(config.Metrics), config.Metrics)
 
 	if len(config.Locations) == 0 {
 		log.Fatalf("Must specify at least one location")
